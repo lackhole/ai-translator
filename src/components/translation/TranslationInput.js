@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import MatchingKeywords from './MatchingKeywords';
+import debounce from 'lodash/debounce';
 
 function TranslationInput({
   sourceText,
@@ -11,57 +12,86 @@ function TranslationInput({
   inputLanguage,
   setInputLanguage
 }) {
-  const editorRef = useRef(null);
+  const [localText, setLocalText] = useState(sourceText);
+  const [highlightedText, setHighlightedText] = useState('');
+  const [showHighlights, setShowHighlights] = useState(true);
+  const textareaRef = useRef(null);
+  const highlightedDivRef = useRef(null);
 
+  // Update local state when props change (from external)
   useEffect(() => {
-    if (!editorRef.current) return;
-    
-    const matches = findMatchingKeywords(sourceText);
-    const text = editorRef.current.innerText;
-    let html = text;
+    setLocalText(sourceText);
+  }, [sourceText]);
 
-    // Sort matches by length (longest first) to prevent nested highlights
-    const sortedMatches = [...matches].sort((a, b) => {
-      const aText = a[1].translations.get('cns') || '';
-      const bText = b[1].translations.get('cns') || '';
-      return bText.length - aText.length;
-    });
+  // Debounced update of parent state - but not highlighted text
+  const debouncedSetSourceText = useRef(
+    debounce((text) => {
+      setSourceText(text);
+    }, 300)
+  ).current;
 
-    // Highlight each match
-    sortedMatches.forEach(([_, value]) => {
-      const cnsText = value.translations.get('cns');
-      if (cnsText) {
-        const regex = new RegExp(cnsText, 'g');
-        html = html.replace(regex, `<span class="highlight">${cnsText}</span>`);
+  // Apply highlighting immediately
+  useEffect(() => {
+    if (showHighlights) {
+      let html = localText;
+      
+      // Only proceed with highlighting if there's text to process
+      if (localText.trim()) {
+        const matches = findMatchingKeywords(localText);
+        
+        // Sort matches by length (longest first) to prevent nested highlights
+        const sortedMatches = [...matches].sort((a, b) => {
+          const aText = a[1].translations.get('cns') || '';
+          const bText = b[1].translations.get('cns') || '';
+          return bText.length - aText.length;
+        });
+
+        // Highlight each match
+        sortedMatches.forEach(([_, value]) => {
+          const cnsText = value.translations.get('cns');
+          if (cnsText) {
+            const regex = new RegExp(cnsText, 'g');
+            html = html.replace(regex, `<span class="highlight">${cnsText}</span>`);
+          }
+        });
       }
-    });
 
-    // Only update if content has changed
-    if (editorRef.current.innerHTML !== html) {
-      editorRef.current.innerHTML = html;
+      setHighlightedText(html);
     }
-  }, [sourceText, findMatchingKeywords]);
+  }, [localText, findMatchingKeywords, showHighlights]);
+
+  // Clean up debounce on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSetSourceText.cancel();
+    };
+  }, [debouncedSetSourceText]);
+
+  // Sync highlight div scrolling with textarea
+  useEffect(() => {
+    if (textareaRef.current && highlightedDivRef.current) {
+      highlightedDivRef.current.scrollTop = textareaRef.current.scrollTop;
+    }
+  });
 
   const handleInput = (e) => {
-    setSourceText(e.target.innerText);
+    const text = e.target.value;
+    setLocalText(text); // Update local state immediately for highlighting
+    debouncedSetSourceText(text); // Update parent state with debounce (for keyword listing)
   };
 
-  const handlePaste = async (e) => {
-    e.preventDefault();
-    const text = e.clipboardData.getData('text/plain');
-    
-    // First update the text content
-    document.execCommand('insertText', false, text);
-    
-    // Then update the source text state
-    const newText = editorRef.current.innerText;
-    setSourceText(newText);
-    
-    // If auto-translate is enabled, wait for state updates and then translate
+  const handleScroll = () => {
+    if (textareaRef.current && highlightedDivRef.current) {
+      highlightedDivRef.current.scrollTop = textareaRef.current.scrollTop;
+    }
+  };
+
+  const handlePaste = (e) => {
     if (autoTranslateOnPaste) {
-      // Use a small delay to ensure state updates are complete
-      await new Promise(resolve => setTimeout(resolve, 50));
-      handleTranslate(newText, 'all');
+      const text = e.clipboardData.getData('text/plain');
+      setLocalText(text);
+      setSourceText(text); // Update parent state immediately on paste
+      setTimeout(() => handleTranslate(text, 'all'), 50);
     }
   };
 
@@ -69,7 +99,7 @@ function TranslationInput({
     <div className="translation-input">
       <div className="translation-input-box">
         <div className="translation-header">
-          <h3>Source Text</h3>
+          <h3>Input Text</h3>
           <div className="translation-controls">
             <select
               value={inputLanguage}
@@ -80,6 +110,15 @@ function TranslationInput({
               <option value="cns">Chinese (Simplified)</option>
               <option value="ko">Korean</option>
             </select>
+            <label className="highlight-toggle">
+              <input
+                type="checkbox"
+                checked={showHighlights}
+                onChange={() => setShowHighlights(!showHighlights)}
+                title="Show/hide keyword highlighting"
+              />
+              <span title="Show/hide keyword highlighting">Highlight</span>
+            </label>
             <label className="auto-translate-toggle">
               <input
                 type="checkbox"
@@ -91,21 +130,32 @@ function TranslationInput({
             </label>
             <button 
               className="translate-button"
-              onClick={() => handleTranslate(sourceText, 'all')}
+              onClick={() => handleTranslate(localText, 'all')}
             >
               Translate All
             </button>
           </div>
         </div>
-        <div
-          ref={editorRef}
-          className="input-text"
-          contentEditable
-          onInput={handleInput}
-          onPaste={handlePaste}
-          suppressContentEditableWarning={true}
-        >
-          {sourceText}
+        <div className="input-container">
+          {showHighlights ? (
+            <div 
+              ref={highlightedDivRef}
+              className="highlighted-text"
+              dangerouslySetInnerHTML={{ __html: highlightedText }}
+            />
+          ) : null}
+          <textarea
+            ref={textareaRef}
+            className="input-text"
+            value={localText}
+            onChange={handleInput}
+            onScroll={handleScroll}
+            onPaste={handlePaste}
+            placeholder="Enter text to translate..."
+            style={{
+              backgroundColor: showHighlights ? 'transparent' : '#1e1e1e'
+            }}
+          />
         </div>
       </div>
       <MatchingKeywords 
