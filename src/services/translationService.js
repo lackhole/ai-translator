@@ -1,9 +1,27 @@
 import OpenAI from 'openai';
 
-const openai = new OpenAI({
-  apiKey: process.env.REACT_APP_OPENAI_API_KEY,
-  dangerouslyAllowBrowser: true
-});
+const getOpenAIKey = () => {
+  const key = localStorage.getItem('openai_api_key');
+  if (!key) {
+    throw new Error('OpenAI API key not found. Please enter your API key in the settings.');
+  }
+  return key;
+};
+
+const createOpenAIClient = () => {
+  return new OpenAI({
+    apiKey: getOpenAIKey(),
+    dangerouslyAllowBrowser: true,
+    fetch: (url, init) => {
+      // Ensure headers are properly encoded
+      const headers = new Headers(init.headers);
+      return fetch(url, {
+        ...init,
+        headers
+      });
+    }
+  });
+};
 
 const GOOGLE_TRANSLATE_API_URL = 'https://translate.googleapis.com/translate_a/single';
 
@@ -32,6 +50,7 @@ const languageMap = {
 export const translateText = async (text, targetLanguage, provider = 'openai', keywordMeanings = [], model = 'gpt-3.5-turbo', inputLanguage = 'auto') => {
   try {
     if (provider === 'openai') {
+      const openai = createOpenAIClient();
       let systemContent = `You are a professional translator who translates texts precisely. `;
       
       // Add source and target languages

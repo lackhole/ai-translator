@@ -11,4 +11,13 @@ root.render(
   </React.StrictMode>
 );
 
+// Suppress WebSocket connection error in development
+if (process.env.NODE_ENV === 'development') {
+  window.addEventListener('error', (e) => {
+    if (e.message.includes('WebSocket')) {
+      e.stopImmediatePropagation();
+    }
+  });
+}
+
 reportWebVitals(); 
