@@ -1,6 +1,6 @@
-# MB Translator
+# AI Translator
 
-A modern React-based translation application.
+Game translation app using AI
 
 ## Getting Started
 
