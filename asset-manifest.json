@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/ai-translator/static/css/main.9a0626a9.css",
+    "main.js": "/ai-translator/static/js/main.7e5b2411.js",
+    "static/js/453.3ebe5a82.chunk.js": "/ai-translator/static/js/453.3ebe5a82.chunk.js",
+    "index.html": "/ai-translator/index.html",
+    "main.9a0626a9.css.map": "/ai-translator/static/css/main.9a0626a9.css.map",
+    "main.7e5b2411.js.map": "/ai-translator/static/js/main.7e5b2411.js.map",
+    "453.3ebe5a82.chunk.js.map": "/ai-translator/static/js/453.3ebe5a82.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.9a0626a9.css",
+    "static/js/main.7e5b2411.js"
+  ]
+}
