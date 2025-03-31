@@ -6,6 +6,7 @@ import { useFileManagement } from './hooks/useFileManagement';
 import TranslationSection from './components/translation/TranslationSection';
 import KeywordSection from './components/keyword/KeywordSection';
 import FileSection from './components/file/FileSection';
+import Navbar from './components/Navbar';
 
 function App() {
   // Get state and functions from custom hooks
@@ -74,6 +75,7 @@ function App() {
 
   return (
     <div className="App">
+      <Navbar />
       <header className="App-header">
         <h1>Mount and Blade Translator</h1>
       </header>
