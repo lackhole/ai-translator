@@ -1,8 +1,9 @@
 import React from 'react';
 import KeywordHeader from './KeywordHeader';
 import KeywordTable from './KeywordTable';
+import { KeywordSectionProps } from '../../types';
 
-function KeywordSection({
+const KeywordSection: React.FC<KeywordSectionProps> = ({
   keywordTranslations,
   displayedKeywords,
   sortConfig,
@@ -16,30 +17,28 @@ function KeywordSection({
   handleExportTranslations,
   handleClearTranslations,
   handleAddCustomKeyword
-}) {
+}) => {
   return (
     <div className="keyword-section">
-      <KeywordHeader
+      <KeywordHeader 
         keywordCount={keywordTranslations.size}
         handleExportTranslations={handleExportTranslations}
         handleClearTranslations={handleClearTranslations}
         handleAddCustomKeyword={handleAddCustomKeyword}
       />
-      <div className="keyword-browser">
-        <KeywordTable
-          displayedKeywords={displayedKeywords}
-          sortConfig={sortConfig}
-          isSorting={isSorting}
-          editingCell={editingCell}
-          handleSort={handleSort}
-          handleCellDoubleClick={handleCellDoubleClick}
-          handleEditSubmit={handleEditSubmit}
-          handleEditCancel={handleEditCancel}
-          handleDeleteKeyword={handleDeleteKeyword}
-        />
-      </div>
+      <KeywordTable 
+        displayedKeywords={displayedKeywords}
+        sortConfig={sortConfig}
+        isSorting={isSorting}
+        editingCell={editingCell}
+        handleSort={handleSort}
+        handleCellDoubleClick={handleCellDoubleClick}
+        handleEditSubmit={handleEditSubmit}
+        handleEditCancel={handleEditCancel}
+        handleDeleteKeyword={handleDeleteKeyword}
+      />
     </div>
   );
-}
+};
 
 export default KeywordSection; 

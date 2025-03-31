@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 
 const STORAGE_KEY = 'openai_api_key';
 
-export const useApiKey = () => {
-  const [apiKey, setApiKey] = useState(() => {
+export const useApiKey = (): [string, React.Dispatch<React.SetStateAction<string>>] => {
+  const [apiKey, setApiKey] = useState<string>(() => {
     return localStorage.getItem(STORAGE_KEY) || '';
   });
 

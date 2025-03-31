@@ -1,8 +1,21 @@
 import React, { useState } from 'react';
 import TranslatorOutput from './TranslatorOutput';
 import { translatorTypes, createTranslator } from '../../services/translatorRegistry';
+import { Translation, Translator } from '../../types';
 
-function highlightKeywords(text, keywordMeanings) {
+interface TranslationOutputProps {
+  translations: Record<string, Translation>;
+  translators: Translator[];
+  onUpdateTranslators: React.Dispatch<React.SetStateAction<Translator[]>>;
+  targetLanguage: string;
+  setTargetLanguage: React.Dispatch<React.SetStateAction<string>>;
+  handleTranslate: (text: string, translatorId: string, targetLanguage?: string) => void;
+  sourceText: string;
+  useKeywords?: boolean;
+  setUseKeywords?: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+function highlightKeywords(text: string, keywordMeanings?: [string, string][]): string {
   if (!text || !keywordMeanings || keywordMeanings.length === 0) return text;
 
   let highlightedText = text;
@@ -19,36 +32,35 @@ function highlightKeywords(text, keywordMeanings) {
   return highlightedText;
 }
 
-function TranslationOutput({ 
+const TranslationOutput: React.FC<TranslationOutputProps> = ({ 
   translations, 
   targetLanguage, 
   setTargetLanguage, 
   handleTranslate, 
   sourceText,
   translators,
-  onUpdateTranslators 
-}) {
-  const [showAddMenu, setShowAddMenu] = useState(false);
+  onUpdateTranslators,
+  useKeywords,
+  setUseKeywords
+}) => {
+  const [showAddMenu, setShowAddMenu] = useState<boolean>(false);
 
-  const handleUpdateConfig = (translatorId, newConfig) => {
+  const handleModelChange = (translatorId: string, newConfig: any): void => {
     const updatedTranslators = translators.map(translator => {
       if (translator.id === translatorId) {
-        return {
-          ...translator,
-          config: newConfig
-        };
+        return translator.updateConfig(newConfig);
       }
       return translator;
     });
     onUpdateTranslators(updatedTranslators);
   };
 
-  const handleDeleteTranslator = (translatorId) => {
+  const handleDeleteTranslator = (translatorId: string): void => {
     const updatedTranslators = translators.filter(translator => translator.id !== translatorId);
     onUpdateTranslators(updatedTranslators);
   };
 
-  const handleAddTranslator = (translatorType) => {
+  const handleAddTranslator = (translatorType: string): void => {
     const newTranslator = createTranslator(translatorType);
     onUpdateTranslators([...translators, newTranslator]);
     setShowAddMenu(false);
@@ -60,13 +72,9 @@ function TranslationOutput({
         <TranslatorOutput
           key={translator.id}
           translator={translator}
-          onDelete={handleDeleteTranslator}
-          onUpdateConfig={handleUpdateConfig}
           translation={translations[translator.id] || { text: '', isLoading: false }}
-          targetLanguage={targetLanguage}
-          setTargetLanguage={setTargetLanguage}
-          handleTranslate={handleTranslate}
-          sourceText={sourceText}
+          onDelete={handleDeleteTranslator}
+          onModelChange={handleModelChange}
         />
       ))}
 
@@ -103,6 +111,7 @@ function TranslationOutput({
       </div>
     </div>
   );
-}
+};
 
+export { highlightKeywords };
 export default TranslationOutput; 

@@ -5,19 +5,47 @@ import {
   saveTranslationsToStorage,
   getCategories
 } from '../services/keywordService';
+import { KeywordTranslation, SortConfig, EditingCell, UpdateStats } from '../types';
 
-export function useKeywords() {
-  const [keywordTranslations, setKeywordTranslations] = useState(new Map());
-  const [useKeywords, setUseKeywords] = useState(false);
-  const [keywordSearch, setKeywordSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [updateStats, setUpdateStats] = useState(null);
-  const [sortConfig, setSortConfig] = useState({
+interface UseKeywordsReturn {
+  keywordTranslations: Map<string, KeywordTranslation>;
+  setKeywordTranslations: React.Dispatch<React.SetStateAction<Map<string, KeywordTranslation>>>;
+  useKeywords: boolean;
+  setUseKeywords: React.Dispatch<React.SetStateAction<boolean>>;
+  keywordSearch: string;
+  setKeywordSearch: React.Dispatch<React.SetStateAction<string>>;
+  selectedCategory: string;
+  setSelectedCategory: React.Dispatch<React.SetStateAction<string>>;
+  updateStats: UpdateStats | null;
+  setUpdateStats: React.Dispatch<React.SetStateAction<UpdateStats | null>>;
+  sortConfig: SortConfig | null;
+  handleSort: (key: string) => void;
+  editingCell: EditingCell | null;
+  setEditingCell: React.Dispatch<React.SetStateAction<EditingCell | null>>;
+  displayedKeywords: [string, KeywordTranslation][];
+  handleTranslationUpdate: (keywordId: string, language: string, newValue: string) => void;
+  handleDeleteKeyword: (keywordId: string) => void;
+  handleEditCancel: (e?: React.KeyboardEvent) => void;
+  handleEditSubmit: (keywordId: string, language: string, value: string) => void;
+  handleClearTranslations: () => void;
+  handleExportTranslations: () => void;
+  findMatchingKeywords: (text: string) => [string, KeywordTranslation][];
+  categories: string[];
+  handleAddCustomKeyword: () => void;
+}
+
+export function useKeywords(): UseKeywordsReturn {
+  const [keywordTranslations, setKeywordTranslations] = useState<Map<string, KeywordTranslation>>(new Map());
+  const [useKeywords, setUseKeywords] = useState<boolean>(false);
+  const [keywordSearch, setKeywordSearch] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [updateStats, setUpdateStats] = useState<UpdateStats | null>(null);
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>({
     key: null,
-    direction: 'asc'
+    direction: 'ascending'
   });
-  const [isSorting, setIsSorting] = useState(false);
-  const [editingCell, setEditingCell] = useState(null);
+  const [isSorting, setIsSorting] = useState<boolean>(false);
+  const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
 
   // Load translations from storage when the app starts
   useEffect(() => {
@@ -33,7 +61,7 @@ export function useKeywords() {
     let filtered = Array.from(keywordTranslations);
     
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(([_, value]) => value.sourceFile === selectedCategory);
+      filtered = filtered.filter(([_, value]) => value.file === selectedCategory);
     }
     
     if (keywordSearch) {
@@ -50,15 +78,15 @@ export function useKeywords() {
 
   // Memoize sorted keywords to prevent unnecessary sorting
   const displayedKeywords = useMemo(() => {
-    if (!sortConfig.key) return filteredKeywords;
+    if (!sortConfig?.key) return filteredKeywords;
     
     return [...filteredKeywords].sort(([keyA, valueA], [keyB, valueB]) => {
-      let a, b;
+      let a: string, b: string;
       
       switch (sortConfig.key) {
         case 'file':
-          a = valueA.sourceFile;
-          b = valueB.sourceFile;
+          a = valueA.file || '';
+          b = valueB.file || '';
           break;
         case 'id':
           a = keyA;
@@ -76,21 +104,29 @@ export function useKeywords() {
           return 0;
       }
 
-      return sortConfig.direction === 'asc' 
+      return sortConfig.direction === 'ascending' 
         ? a.localeCompare(b)
         : b.localeCompare(a);
     });
   }, [filteredKeywords, sortConfig]);
 
-  const handleSort = (key) => {
+  const handleSort = (key: string): void => {
     setSortConfig(prevConfig => ({
       key,
-      direction: prevConfig.key === key && prevConfig.direction === 'asc' ? 'desc' : 'asc'
+      direction: prevConfig?.key === key && prevConfig?.direction === 'ascending' ? 'descending' : 'ascending'
     }));
   };
 
+  // Debounced save function
+  const debouncedSaveTranslations = useCallback(
+    debounce((translations: Map<string, KeywordTranslation>) => {
+      saveTranslationsToStorage(translations);
+    }, 1000),
+    []
+  );
+
   // Optimized translation update function
-  const handleTranslationUpdate = (keywordId, language, newValue) => {
+  const handleTranslationUpdate = (keywordId: string, language: string, newValue: string): void => {
     setKeywordTranslations(prev => {
       const updated = new Map(prev);
       const keyword = updated.get(keywordId);
@@ -105,16 +141,8 @@ export function useKeywords() {
     setEditingCell(null);
   };
 
-  // Debounced save function
-  const debouncedSaveTranslations = useCallback(
-    debounce((translations) => {
-      saveTranslationsToStorage(translations);
-    }, 1000),
-    []
-  );
-
   // Optimized delete function with immediate UI update
-  const handleDeleteKeyword = (keywordId) => {
+  const handleDeleteKeyword = (keywordId: string): void => {
     setKeywordTranslations(prev => {
       const updated = new Map(prev);
       updated.delete(keywordId);
@@ -125,20 +153,20 @@ export function useKeywords() {
   };
 
   // Function to handle edit cancellation
-  const handleEditCancel = (e) => {
-    if (e.key === 'Escape') {
+  const handleEditCancel = (e?: React.KeyboardEvent): void => {
+    if (!e || e.key === 'Escape') {
       setEditingCell(null);
     }
   };
 
   // Function to handle edit submission
-  const handleEditSubmit = (keywordId, language, value) => {
+  const handleEditSubmit = (keywordId: string, language: string, value: string): void => {
     if (language === 'file') {
       setKeywordTranslations(prev => {
         const updated = new Map(prev);
         const keyword = updated.get(keywordId);
         if (keyword) {
-          keyword.sourceFile = value;
+          keyword.file = value;
         }
         return updated;
       });
@@ -150,7 +178,7 @@ export function useKeywords() {
     }
   };
 
-  const handleClearTranslations = () => {
+  const handleClearTranslations = (): void => {
     localStorage.removeItem('mb_translator_keywords');
     setKeywordTranslations(new Map());
     setUseKeywords(false);
@@ -158,16 +186,15 @@ export function useKeywords() {
   };
 
   // Function to add a custom keyword
-  const handleAddCustomKeyword = () => {
+  const handleAddCustomKeyword = (): void => {
     const customId = `custom_${Date.now()}`;
     
     setKeywordTranslations(prev => {
       const updated = new Map(prev);
       updated.set(customId, {
-        sourceFile: '',  // Empty file name
+        file: '',  // Empty file name
         translations: new Map(),
-        isCustom: true,  // Mark as custom keyword
-        category: 'custom'
+        isCustom: true  // Mark as custom keyword
       });
       return updated;
     });
@@ -180,12 +207,12 @@ export function useKeywords() {
   };
 
   // Function to handle export of Korean translations
-  const handleExportTranslations = () => {
+  const handleExportTranslations = (): void => {
     // Group translations by source file
-    const translationsByFile = new Map();
+    const translationsByFile = new Map<string, string[]>();
     
     displayedKeywords.forEach(([key, value]) => {
-      const sourceFile = value.sourceFile;
+      const sourceFile = value.file;
       const koTranslation = value.translations.get('ko') || '';
       
       // Skip if file is empty (custom keywords without file name)
@@ -195,7 +222,7 @@ export function useKeywords() {
         translationsByFile.set(sourceFile, []);
       }
       
-      translationsByFile.get(sourceFile).push(`${key}|${koTranslation}`);
+      translationsByFile.get(sourceFile)?.push(`${key}|${koTranslation}`);
     });
     
     // Create and download files for each source
@@ -215,7 +242,7 @@ export function useKeywords() {
   };
 
   // Function to find exact substring matches in the source text
-  const findMatchingKeywords = (text) => {
+  const findMatchingKeywords = (text: string): [string, KeywordTranslation][] => {
     if (!text) return [];
     
     return Array.from(keywordTranslations)
@@ -248,7 +275,6 @@ export function useKeywords() {
     handleSort,
     editingCell,
     setEditingCell,
-    filteredKeywords,
     displayedKeywords,
     handleTranslationUpdate,
     handleDeleteKeyword,

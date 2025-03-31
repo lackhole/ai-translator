@@ -1,6 +1,17 @@
 import OpenAI from 'openai';
 
-const getOpenAIKey = () => {
+interface LanguageMap {
+  [provider: string]: {
+    [code: string]: string;
+  };
+}
+
+interface TranslationResult {
+  text: string;
+  keywordMeanings?: [string, string][];
+}
+
+const getOpenAIKey = (): string => {
   const key = localStorage.getItem('openai_api_key');
   if (!key) {
     throw new Error('OpenAI API key not found. Please enter your API key in the settings.');
@@ -12,7 +23,9 @@ const createOpenAIClient = () => {
   return new OpenAI({
     apiKey: getOpenAIKey(),
     dangerouslyAllowBrowser: true,
-    fetch: (url, init) => {
+    fetch: (url: RequestInfo, init?: RequestInit) => {
+      if (!init) return fetch(url);
+      
       // Ensure headers are properly encoded
       const headers = new Headers(init.headers);
       return fetch(url, {
@@ -26,7 +39,7 @@ const createOpenAIClient = () => {
 const GOOGLE_TRANSLATE_API_URL = 'https://translate.googleapis.com/translate_a/single';
 
 // Map UI language codes to API-specific language codes
-const languageMap = {
+const languageMap: LanguageMap = {
   // For OpenAI, we just use descriptive language names
   openai: {
     auto: 'auto-detect',
@@ -47,7 +60,14 @@ const languageMap = {
   }
 };
 
-export const translateText = async (text, targetLanguage, provider = 'openai', keywordMeanings = [], model = 'gpt-3.5-turbo', inputLanguage = 'auto') => {
+export const translateText = async (
+  text: string, 
+  targetLanguage: string, 
+  provider: string = 'openai', 
+  keywordMeanings: [string, string][] = [], 
+  model: string = 'gpt-3.5-turbo', 
+  inputLanguage: string = 'auto'
+): Promise<string> => {
   try {
     if (provider === 'openai') {
       const openai = createOpenAIClient();
@@ -73,7 +93,11 @@ export const translateText = async (text, targetLanguage, provider = 'openai', k
         temperature: 0.3,
       });
       
-      return response.choices[0].message.content.trim();
+      if (!response.choices || response.choices.length === 0 || !response.choices[0].message) {
+        throw new Error('Invalid response from OpenAI');
+      }
+      
+      return response.choices[0].message.content?.trim() || '';
     } else if (provider === 'google') {
       const params = new URLSearchParams({
         client: 'gtx',
@@ -91,16 +115,7 @@ export const translateText = async (text, targetLanguage, provider = 'openai', k
 
       const data = await response.json();
       return data[0][0][0]; // The translated text is in the first element of the nested array
-    } else if (provider === 'papago') {
-      const params = new URLSearchParams({
-        sk: languageMap.papago[inputLanguage] || 'auto',
-        tk: languageMap.papago[targetLanguage] || 'ko',
-        st: text
-      });
-
-      
-    }
-    else {
+    } else {
       throw new Error('Unsupported translation provider');
     }
   } catch (error) {
@@ -109,7 +124,13 @@ export const translateText = async (text, targetLanguage, provider = 'openai', k
   }
 };
 
-export async function translateWithOpenAI(text, targetLanguage, keywordMeanings = [], model = 'gpt-3.5-turbo', inputLanguage = 'auto') {
+export async function translateWithOpenAI(
+  text: string, 
+  targetLanguage: string, 
+  keywordMeanings: [string, string][] = [], 
+  model: string = 'gpt-3.5-turbo', 
+  inputLanguage: string = 'auto'
+): Promise<TranslationResult> {
   try {
     const result = await translateText(text, targetLanguage, 'openai', keywordMeanings, model, inputLanguage);
     return {
@@ -122,11 +143,24 @@ export async function translateWithOpenAI(text, targetLanguage, keywordMeanings 
   }
 }
 
-export const translateWithGoogle = async (text, targetLanguage, inputLanguage = 'auto') => {
-  return translateText(text, targetLanguage, 'google', [], null, inputLanguage);
+export const translateWithGoogle = async (
+  text: string, 
+  targetLanguage: string, 
+  inputLanguage: string = 'auto'
+): Promise<string> => {
+  return translateText(text, targetLanguage, 'google', [], 'gpt-3.5-turbo', inputLanguage);
 };
 
-export async function translateWithBothProviders(text, targetLanguage, keywordMeanings = [], model = 'gpt-3.5-turbo', inputLanguage = 'auto') {
+export async function translateWithBothProviders(
+  text: string, 
+  targetLanguage: string, 
+  keywordMeanings: [string, string][] = [], 
+  model: string = 'gpt-3.5-turbo', 
+  inputLanguage: string = 'auto'
+): Promise<{ 
+  openai: TranslationResult, 
+  google: { text: string } 
+}> {
   try {
     const [openaiResult, googleResult] = await Promise.all([
       translateWithOpenAI(text, targetLanguage, keywordMeanings, model, inputLanguage),

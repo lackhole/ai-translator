@@ -4,7 +4,7 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
+const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 root.render(
   <React.StrictMode>
     <App />
@@ -13,7 +13,7 @@ root.render(
 
 // Suppress WebSocket connection error in development
 if (process.env.NODE_ENV === 'development') {
-  window.addEventListener('error', (e) => {
+  window.addEventListener('error', (e: ErrorEvent) => {
     if (e.message.includes('WebSocket')) {
       e.stopImmediatePropagation();
     }

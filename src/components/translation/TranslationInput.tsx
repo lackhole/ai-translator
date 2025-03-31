@@ -1,8 +1,8 @@
 import React, { useRef, useState, useEffect } from 'react';
 import MatchingKeywords from './MatchingKeywords';
-import debounce from 'lodash/debounce';
+import { TranslationInputProps, KeywordTranslation } from '../../types';
 
-function TranslationInput({
+const TranslationInput: React.FC<TranslationInputProps> = ({
   sourceText,
   setSourceText,
   handleTranslate,
@@ -11,24 +11,17 @@ function TranslationInput({
   setAutoTranslateOnPaste,
   inputLanguage,
   setInputLanguage
-}) {
-  const [localText, setLocalText] = useState(sourceText);
-  const [highlightedText, setHighlightedText] = useState('');
-  const [showHighlights, setShowHighlights] = useState(true);
-  const textareaRef = useRef(null);
-  const highlightedDivRef = useRef(null);
+}) => {
+  const [localText, setLocalText] = useState<string>(sourceText);
+  const [highlightedText, setHighlightedText] = useState<string>('');
+  const [showHighlights, setShowHighlights] = useState<boolean>(true);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const highlightedDivRef = useRef<HTMLDivElement>(null);
 
   // Update local state when props change (from external)
   useEffect(() => {
     setLocalText(sourceText);
   }, [sourceText]);
-
-  // Debounced update of parent state - but not highlighted text
-  const debouncedSetSourceText = useRef(
-    debounce((text) => {
-      setSourceText(text);
-    }, 300)
-  ).current;
 
   // Apply highlighting immediately
   useEffect(() => {
@@ -60,13 +53,6 @@ function TranslationInput({
     }
   }, [localText, findMatchingKeywords, showHighlights]);
 
-  // Clean up debounce on unmount
-  useEffect(() => {
-    return () => {
-      debouncedSetSourceText.cancel();
-    };
-  }, [debouncedSetSourceText]);
-
   // Sync highlight div scrolling with textarea
   useEffect(() => {
     if (textareaRef.current && highlightedDivRef.current) {
@@ -74,19 +60,19 @@ function TranslationInput({
     }
   });
 
-  const handleInput = (e) => {
+  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
     const text = e.target.value;
     setLocalText(text); // Update local state immediately for highlighting
-    debouncedSetSourceText(text); // Update parent state with debounce (for keyword listing)
+    setSourceText(text); // Update parent state
   };
 
-  const handleScroll = () => {
+  const handleScroll = (): void => {
     if (textareaRef.current && highlightedDivRef.current) {
       highlightedDivRef.current.scrollTop = textareaRef.current.scrollTop;
     }
   };
 
-  const handlePaste = (e) => {
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>): void => {
     if (autoTranslateOnPaste) {
       const text = e.clipboardData.getData('text/plain');
       setLocalText(text);
@@ -99,7 +85,7 @@ function TranslationInput({
     <div className="translation-input">
       <div className="translation-input-box">
         <div className="translation-header">
-          <h3>Input Text</h3>
+          <h3>Source Text</h3>
           <div className="translation-controls">
             <select
               value={inputLanguage}
@@ -164,6 +150,6 @@ function TranslationInput({
       />
     </div>
   );
-}
+};
 
 export default TranslationInput; 

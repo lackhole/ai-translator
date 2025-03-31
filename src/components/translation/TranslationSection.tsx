@@ -1,13 +1,16 @@
 import React from 'react';
 import TranslationInput from './TranslationInput';
 import TranslationOutput from './TranslationOutput';
+import { TranslationSectionProps } from '../../types';
 
-function TranslationSection({
+const TranslationSection: React.FC<TranslationSectionProps> = ({
   sourceText,
   setSourceText,
   translations,
   translators,
   setTranslators,
+  useKeywords,
+  setUseKeywords,
   targetLanguage,
   setTargetLanguage,
   inputLanguage,
@@ -16,7 +19,7 @@ function TranslationSection({
   findMatchingKeywords,
   autoTranslateOnPaste,
   setAutoTranslateOnPaste
-}) {
+}) => {
   return (
     <div className="translation-container">
       <div className="translation-columns">
@@ -41,11 +44,13 @@ function TranslationSection({
             setTargetLanguage={setTargetLanguage}
             handleTranslate={handleTranslate}
             sourceText={sourceText}
+            useKeywords={useKeywords}
+            setUseKeywords={setUseKeywords}
           />
         </div>
       </div>
     </div>
   );
-}
+};
 
 export default TranslationSection; 

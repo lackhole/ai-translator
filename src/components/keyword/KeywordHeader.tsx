@@ -1,40 +1,43 @@
 import React from 'react';
 
-function KeywordHeader({ 
-  keywordCount, 
-  handleExportTranslations, 
+interface KeywordHeaderProps {
+  keywordCount: number;
+  handleExportTranslations: () => void;
+  handleClearTranslations: () => void;
+  handleAddCustomKeyword: () => void;
+}
+
+const KeywordHeader: React.FC<KeywordHeaderProps> = ({
+  keywordCount,
+  handleExportTranslations,
   handleClearTranslations,
   handleAddCustomKeyword
-}) {
+}) => {
   return (
     <div className="keyword-header">
-      <div className="keyword-info">
-        Loaded {keywordCount} keyword translations
-      </div>
+      <h2>Keywords ({keywordCount})</h2>
       <div className="keyword-actions">
         <button 
-          className="add-keyword-button"
+          className="add-custom-keyword-button" 
           onClick={handleAddCustomKeyword}
-          title="Add a custom keyword"
         >
           Add Custom Keyword
         </button>
         <button 
-          className="export-button"
+          className="export-button" 
           onClick={handleExportTranslations}
-          title="Export Korean translations"
         >
           Export Translations
         </button>
         <button 
-          className="clear-button"
+          className="clear-button" 
           onClick={handleClearTranslations}
         >
-          Clear Translations
+          Clear All
         </button>
       </div>
     </div>
   );
-}
+};
 
 export default KeywordHeader; 

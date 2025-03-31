@@ -7,8 +7,9 @@ import TranslationSection from './components/translation/TranslationSection';
 import KeywordSection from './components/keyword/KeywordSection';
 import FileSection from './components/file/FileSection';
 import Navbar from './components/Navbar';
+import { EditingCell } from './types';
 
-function App() {
+function App(): React.ReactElement {
   // Get state and functions from custom hooks
   const {
     keywordTranslations,
@@ -61,16 +62,16 @@ function App() {
     handleCloseFileList
   } = useFileManagement(keywordTranslations, setKeywordTranslations, setUseKeywords, setUpdateStats, setError);
 
-  const [autoTranslateOnPaste, setAutoTranslateOnPaste] = useState(false);
+  const [autoTranslateOnPaste, setAutoTranslateOnPaste] = useState<boolean>(false);
 
   // Combine cell double click handlers
-  const handleCellDoubleClick = (key, lang, cnsText) => {
+  const handleCellDoubleClick = (key: string, lang: string, cnsText: string): void => {
     const editInfo = translateCellText(key, lang, cnsText);
-    setEditingCell(editInfo);
+    setEditingCell(editInfo as EditingCell);
   };
 
-  const handleTranslateAll = () => {
-    handleTranslate(sourceText, 'all', targetLanguage);
+  const handleTranslateAll = (): void => {
+    handleTranslate(sourceText, 'all');
   };
 
   return (

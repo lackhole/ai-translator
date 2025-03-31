@@ -1,6 +1,13 @@
+import { KeywordTranslation, UpdateStats } from '../types';
+
 const STORAGE_KEY = 'mb_translator_keywords';
 
-export const parseTranslationLine = (line) => {
+interface ParsedTranslation {
+  key: string;
+  translation: string;
+}
+
+export const parseTranslationLine = (line: string): ParsedTranslation | null => {
   if (!line.trim()) return null;
   
   const [key, translation] = line.split('|').map(part => part.trim());
@@ -9,11 +16,11 @@ export const parseTranslationLine = (line) => {
   return { key, translation };
 };
 
-export const loadTranslationFile = async (file) => {
+export const loadTranslationFile = async (file: File): Promise<Map<string, KeywordTranslation>> => {
   try {
     const text = await file.text();
     const lines = text.split('\n');
-    const translations = new Map();
+    const translations = new Map<string, KeywordTranslation>();
     
     // Extract category and language from filename
     // e.g., "cns/troops.csv" -> category: "cns", language: "cns"
@@ -29,9 +36,8 @@ export const loadTranslationFile = async (file) => {
       const parsed = parseTranslationLine(line);
       if (parsed) {
         const existingEntry = translations.get(parsed.key) || {
-          translations: new Map(),
-          category,
-          sourceFile
+          translations: new Map<string, string>(),
+          file: sourceFile
         };
         
         // Add or update the translation for this language
@@ -47,14 +53,14 @@ export const loadTranslationFile = async (file) => {
   }
 };
 
-export const loadTranslationsFromStorage = () => {
+export const loadTranslationsFromStorage = (): Map<string, KeywordTranslation> => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (!stored) return new Map();
     
     const parsed = JSON.parse(stored);
     // Convert the stored object back to a Map with nested Maps for translations
-    return new Map(Object.entries(parsed).map(([key, value]) => [
+    return new Map(Object.entries(parsed).map(([key, value]: [string, any]) => [
       key,
       {
         ...value,
@@ -67,7 +73,7 @@ export const loadTranslationsFromStorage = () => {
   }
 };
 
-export const saveTranslationsToStorage = (translations) => {
+export const saveTranslationsToStorage = (translations: Map<string, KeywordTranslation>): void => {
   try {
     // Convert the Map with nested Maps to a plain object for storage
     const serialized = JSON.stringify(Object.fromEntries(
@@ -85,46 +91,65 @@ export const saveTranslationsToStorage = (translations) => {
   }
 };
 
-export const translateWithKeywords = (text, keywordTranslations, targetLanguage) => {
+export const translateWithKeywords = (
+  text: string, 
+  keywordTranslations: Map<string, KeywordTranslation>, 
+  targetLanguage: string
+): string => {
   let translatedText = text;
   
   // Sort keywords by length (longest first) to handle overlapping keywords
-  const sortedKeywords = Array.from(keywordTranslations.keys())
+  const sortedKeywords = Array.from(keywordTranslations.entries())
+    .filter(([_, value]) => value.translations.has('cns') && value.translations.has(targetLanguage))
+    .map(([_, value]) => value.translations.get('cns') as string)
     .sort((a, b) => b.length - a.length);
   
   sortedKeywords.forEach(keyword => {
-    const entry = keywordTranslations.get(keyword);
-    const translation = entry.translations.get(targetLanguage);
-    if (translation) {
-      const regex = new RegExp(keyword, 'g');
-      translatedText = translatedText.replace(regex, translation);
+    // Convert entries to array first to avoid iterator issues
+    const entries = Array.from(keywordTranslations.entries());
+    for (let i = 0; i < entries.length; i++) {
+      const [id, entry] = entries[i];
+      if (entry.translations.get('cns') === keyword) {
+        const translation = entry.translations.get(targetLanguage);
+        if (translation) {
+          const regex = new RegExp(keyword, 'g');
+          translatedText = translatedText.replace(regex, translation);
+        }
+        break;
+      }
     }
   });
   
   return translatedText;
 };
 
-export const getCategories = (translations) => {
-  const categories = new Set();
+export const getCategories = (translations: Map<string, KeywordTranslation>): string[] => {
+  const categories = new Set<string>();
   translations.forEach((value) => {
-    if (value.sourceFile) {
-      categories.add(value.sourceFile);
+    if (value.file) {
+      categories.add(value.file);
     }
   });
   return Array.from(categories).sort();
 };
 
-export const getTranslationsByCategory = (translations, category) => {
-  const filtered = new Map();
+export const getTranslationsByCategory = (
+  translations: Map<string, KeywordTranslation>, 
+  category: string
+): Map<string, KeywordTranslation> => {
+  const filtered = new Map<string, KeywordTranslation>();
   translations.forEach((value, key) => {
-    if (value.sourceFile === category) {
+    if (value.file === category) {
       filtered.set(key, value);
     }
   });
   return filtered;
 };
 
-export const getTranslationsByLanguage = (translations, language) => {
+export const getTranslationsByLanguage = (
+  translations: Map<string, KeywordTranslation>, 
+  language: string
+): Map<string, KeywordTranslation> => {
   return new Map(
     Array.from(translations.entries())
       .filter(([_, value]) => value.translations.has(language))
